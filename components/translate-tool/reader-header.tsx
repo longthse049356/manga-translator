@@ -90,7 +90,7 @@ export function ReaderHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <Settings className="h-5 w-5" />
               </Button>

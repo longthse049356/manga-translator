@@ -134,7 +134,7 @@ export function ImageGrid({
                   <Button
                     size="sm"
                     onClick={() => onDownload(image)}
-                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-xs text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
+                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
                   >
                     <Download className="h-3 w-3" />
                     Download
@@ -145,7 +145,7 @@ export function ImageGrid({
                     size="sm"
                     onClick={() => onRetry(image)}
                     disabled={image.loading}
-                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 text-xs text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
+                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
                   >
                     <RotateCw className="h-3 w-3" />
                     Retry
@@ -155,7 +155,7 @@ export function ImageGrid({
                   size="sm"
                   variant="ghost"
                   onClick={() => onRemoveImage(image.id)}
-                  className="gap-1 rounded-lg text-xs text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                  className="gap-1 rounded-lg text-red-300 hover:bg-red-500/20 hover:text-red-200"
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
