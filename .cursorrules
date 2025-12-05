@@ -67,3 +67,21 @@ Never push directly to `main`. Always:
 2. Commit changes
 3. Push branch: `git push -u origin <branch>`
 4. Create PR: `gh pr create`
+
+### Core Style
+- **Theme**: Glassmorphism + Aurora UI
+- **Background**: Use `<GradientBackground />` component on ALL pages.
+- **Glass Panels**: `bg-white/10` + `backdrop-blur-xl` + `border-white/20`.
+- **Colors**:
+  - Primary Gradient: `from-cyan-500 to-purple-500`
+  - Text: White with `drop-shadow-lg` for headings.
+- **Animations**: Use `animate-in fade-in` and `animate-blob` for backgrounds.
+
+### Component Rules
+- **Buttons**: Use `rounded-xl` and gradient bg for primary actions.
+- **Inputs**: Use `bg-white/5` (darker glass) for better contrast.
+- **Icons**: Lucide React only (No emojis).
+
+### Accessibility (MANDATORY)
+- Text on glass MUST have >4.5:1 contrast ratio.
+- Verify using `FE/components/translate-tool/ACCESSIBILITY.md` standards.

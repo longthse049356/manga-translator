@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import {
   ReactCompareSlider,
   ReactCompareSliderImage,
@@ -18,7 +18,6 @@ interface ImageItem {
   translatedImageUrl: string | null;
   loading: boolean;
   error: string | null;
-  progress: number;
   retryCount: number;
 }
 
@@ -28,7 +27,7 @@ interface ReaderViewProps {
 
 type ViewMode = "translated" | "original" | "compare";
 
-export function ReaderView({ images }: ReaderViewProps) {
+export const ReaderView = memo(function ReaderView({ images }: ReaderViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("translated");
   const [enableZoom, setEnableZoom] = useState(false);
 
@@ -174,5 +173,5 @@ export function ReaderView({ images }: ReaderViewProps) {
       </div>
     </div>
   );
-}
+});
 

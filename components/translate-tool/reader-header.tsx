@@ -1,23 +1,28 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Settings, Upload, BookOpen } from "lucide-react";
+import { Settings, Upload, BookOpen, Download } from "lucide-react";
 
 interface ReaderHeaderProps {
   mode: "upload" | "reader";
   onModeChange: (mode: "upload" | "reader") => void;
   onTranslateAll?: () => void;
+  onDownloadAll?: () => void;
   isTranslating?: boolean;
   hasUntranslatedImages?: boolean;
+  hasTranslatedImages?: boolean;
 }
 
-export function ReaderHeader({
+export const ReaderHeader = memo(function ReaderHeader({
   mode,
   onModeChange,
   onTranslateAll,
+  onDownloadAll,
   isTranslating = false,
   hasUntranslatedImages = false,
+  hasTranslatedImages = false,
 }: ReaderHeaderProps) {
   return (
     <header className="sticky top-4 z-50 mx-4 animate-in fade-in slide-in-from-top-5 duration-500">
@@ -87,6 +92,15 @@ export function ReaderHeader({
                   )}
                 </Button>
               )}
+              {hasTranslatedImages && onDownloadAll && (
+                <Button
+                  onClick={onDownloadAll}
+                  className="gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-6 font-semibold text-white shadow-lg shadow-green-500/50 transition-all hover:scale-105 hover:shadow-xl hover:shadow-green-500/60"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download All</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -100,5 +114,5 @@ export function ReaderHeader({
       </div>
     </header>
   );
-}
+});
 

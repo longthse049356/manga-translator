@@ -11,6 +11,8 @@ interface UploadZoneProps {
   mangadexUrl?: string;
   onMangadexUrlChange?: (url: string) => void;
   loadingMangadex?: boolean;
+  seriesName?: string;
+  onSeriesNameChange?: (name: string) => void;
 }
 
 export function UploadZone({
@@ -19,6 +21,8 @@ export function UploadZone({
   mangadexUrl = "",
   onMangadexUrlChange,
   loadingMangadex = false,
+  seriesName = "",
+  onSeriesNameChange,
 }: UploadZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +53,37 @@ export function UploadZone({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      {/* Series Name Input - Optional */}
+      {onSeriesNameChange && (
+        <div className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl transition-all hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/20">
+          <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 blur transition-opacity group-hover:opacity-20" />
+          
+          <div className="relative p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-400/20 to-pink-500/20 ring-1 ring-purple-400/30">
+                <ImageIcon className="h-5 w-5 text-purple-300" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">
+                  Series Name (Optional)
+                </h3>
+                <p className="text-sm text-purple-200/60">
+                  Enter series name for better translation context
+                </p>
+              </div>
+            </div>
+
+            <Input
+              type="text"
+              placeholder="e.g., One Piece, Naruto, Attack on Titan..."
+              value={seriesName}
+              onChange={(e) => onSeriesNameChange(e.target.value)}
+              className="rounded-xl border-white/20 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-purple-500/50"
+            />
+          </div>
+        </div>
+      )}
+
       {/* MangaDex Fetcher - Glass Card */}
       {onMangadexFetch && onMangadexUrlChange && (
         <div className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl transition-all hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/20">

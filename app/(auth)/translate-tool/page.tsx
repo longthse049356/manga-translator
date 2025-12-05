@@ -18,7 +18,6 @@ interface ImageItem {
   translatedImageUrl: string | null;
   loading: boolean;
   error: string | null;
-  progress: number;
   retryCount: number;
 }
 
@@ -28,6 +27,7 @@ export default function TranslateToolPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [mangadexUrl, setMangadexUrl] = useState<string>("");
   const [loadingMangadex, setLoadingMangadex] = useState(false);
+  const [seriesName, setSeriesName] = useState<string>("");
 
   // Generate unique ID for each image
   const generateId = useCallback(() => {
@@ -74,7 +74,6 @@ export default function TranslateToolPage() {
           translatedImageUrl: null,
           loading: false,
           error: null,
-          progress: 0,
           retryCount: 0,
         });
       });
@@ -111,7 +110,6 @@ export default function TranslateToolPage() {
                 ...img,
                 loading: true,
                 error: null,
-                progress: 0,
                 retryCount: isRetry ? img.retryCount + 1 : img.retryCount,
               }
             : img
@@ -119,20 +117,6 @@ export default function TranslateToolPage() {
       );
 
       try {
-        // Simulate progress updates
-        const progressInterval = setInterval(() => {
-          setImages((prev) =>
-            prev.map((img) =>
-              img.id === imageItem.id
-                ? {
-                    ...img,
-                    progress: Math.min(img.progress + 10, 90),
-                  }
-                : img
-            )
-          );
-        }, 200);
-
         // Prepare FormData
         const formData = new FormData();
 
@@ -153,19 +137,43 @@ export default function TranslateToolPage() {
           throw new Error("No file or source URL available");
         }
 
+        // Add series name if provided
+        if (seriesName.trim()) {
+          formData.append("seriesName", seriesName.trim());
+        }
+
         // Call API
         const response = await fetch("/api/translate", {
           method: "POST",
           body: formData,
         });
 
-        clearInterval(progressInterval);
-
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error || `Translation failed: ${response.statusText}`
-          );
+          
+          // Parse and format error message
+          let errorMessage = errorData.error || `Translation failed: ${response.statusText}`;
+          
+          // Handle JSON string errors (from Gemini API)
+          if (typeof errorMessage === "string" && errorMessage.startsWith("{")) {
+            try {
+              const parsedError = JSON.parse(errorMessage);
+              if (parsedError.error) {
+                const geminiError = parsedError.error;
+                if (geminiError.code === 503 || geminiError.status === "UNAVAILABLE") {
+                  errorMessage = "Model đang quá tải. Vui lòng thử lại sau vài giây.";
+                } else if (geminiError.code === 429) {
+                  errorMessage = "Đã vượt quá giới hạn API. Vui lòng thử lại sau.";
+                } else {
+                  errorMessage = geminiError.message || "Lỗi từ Gemini API.";
+                }
+              }
+            } catch {
+              // Keep original message if parsing fails
+            }
+          }
+          
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -186,7 +194,6 @@ export default function TranslateToolPage() {
                   ...img,
                   loading: false,
                   translatedImageUrl: translatedDataUrl,
-                  progress: 100,
                   retryCount: 0,
                 }
               : img
@@ -208,7 +215,6 @@ export default function TranslateToolPage() {
 
         // Auto-retry once if not already retried
         if (currentRetryCount === 0) {
-          console.log(`Auto-retrying translation for ${imageItem.fileName}...`);
           await new Promise((resolve) => setTimeout(resolve, 1000));
           return translateSingleImage(imageItem, true);
         }
@@ -221,7 +227,6 @@ export default function TranslateToolPage() {
                   ...img,
                   loading: false,
                   error: errorMessage,
-                  progress: 0,
                 }
               : img
           )
@@ -234,7 +239,7 @@ export default function TranslateToolPage() {
         };
       }
     },
-    []
+    [seriesName]
   );
 
   // Handle translate all images with concurrency limit
@@ -278,7 +283,6 @@ export default function TranslateToolPage() {
             return result;
           })
           .catch((error) => {
-            console.error(`Translation failed for ${imageItem.fileName}:`, error);
             results.push({
               success: false,
               id: imageItem.id,
@@ -305,13 +309,6 @@ export default function TranslateToolPage() {
         break;
       }
     }
-
-    const successful = results.filter((r) => r.success).length;
-    const failed = results.filter((r) => !r.success).length;
-
-    console.log(
-      `Translation completed: ${successful} successful, ${failed} failed`
-    );
   }, [images, translateSingleImage]);
 
   // Remove image
@@ -390,7 +387,6 @@ export default function TranslateToolPage() {
             translatedImageUrl: null,
             loading: false,
             error: null,
-            progress: 0,
             retryCount: 0,
           };
         }
@@ -417,12 +413,32 @@ export default function TranslateToolPage() {
         }
       });
     };
-  }, [images]);
+  }, []);
 
   const hasUntranslatedImages = images.some(
     (img) => !img.translatedImageUrl && !img.loading
   );
+  const hasTranslatedImages = images.some((img) => img.translatedImageUrl);
   const isTranslating = images.some((img) => img.loading);
+
+  // Download all translated images
+  const handleDownloadAll = useCallback(() => {
+    const translatedImages = images.filter((img) => img.translatedImageUrl);
+    
+    if (translatedImages.length === 0) {
+      setGlobalError("No translated images to download.");
+      return;
+    }
+
+    translatedImages.forEach((imageItem, index) => {
+      setTimeout(() => {
+        const link = document.createElement("a");
+        link.href = imageItem.translatedImageUrl!;
+        link.download = `translated-${index + 1}-${imageItem.fileName}`;
+        link.click();
+      }, index * 100); // Stagger downloads to avoid browser blocking
+    });
+  }, [images]);
 
   return (
     <>
@@ -436,8 +452,10 @@ export default function TranslateToolPage() {
           mode={mode}
           onModeChange={setMode}
           onTranslateAll={handleTranslateAll}
+          onDownloadAll={handleDownloadAll}
           isTranslating={isTranslating}
           hasUntranslatedImages={hasUntranslatedImages}
+          hasTranslatedImages={hasTranslatedImages}
         />
 
         {/* Content Container */}
@@ -463,6 +481,8 @@ export default function TranslateToolPage() {
                 mangadexUrl={mangadexUrl}
                 onMangadexUrlChange={setMangadexUrl}
                 loadingMangadex={loadingMangadex}
+                seriesName={seriesName}
+                onSeriesNameChange={setSeriesName}
               />
 
               {/* Image Grid */}

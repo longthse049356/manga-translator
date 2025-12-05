@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, Loader2, Download, Trash2, RotateCw } from "lucide-react";
 
 interface ImageItem {
@@ -13,7 +12,6 @@ interface ImageItem {
   translatedImageUrl: string | null;
   loading: boolean;
   error: string | null;
-  progress: number;
   retryCount: number;
 }
 
@@ -104,11 +102,10 @@ export function ImageGrid({
               />
               {image.loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                  <div className="text-center">
-                    <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-cyan-400" />
-                    <Progress value={image.progress} className="w-32" />
-                    <p className="mt-2 text-xs text-white">
-                      {image.progress}%
+                  <div className="flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                    <p className="mt-2 text-sm text-white">
+                      Translating...
                     </p>
                   </div>
                 </div>
@@ -123,8 +120,13 @@ export function ImageGrid({
 
               {/* Error Message */}
               {image.error && (
-                <div className="mb-2 rounded-lg bg-red-500/10 p-2 text-xs text-red-300">
-                  {image.error}
+                <div className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 backdrop-blur-sm">
+                  <div className="flex items-start gap-2">
+                    <XCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                    <p className="text-xs text-red-200 leading-relaxed">
+                      {image.error}
+                    </p>
+                  </div>
                 </div>
               )}
 
