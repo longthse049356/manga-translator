@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("image") as File;
     const seriesName = formData.get("seriesName") as string | null;
+    const feedback = formData.get("feedback") as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
     // Translate the image
     const translatedImageBase64 = await translateMangaImage(
       file,
-      seriesName || undefined
+      seriesName || undefined,
+      feedback || undefined
     );
 
     // Return the translated image as base64

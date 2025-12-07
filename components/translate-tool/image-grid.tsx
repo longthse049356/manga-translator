@@ -1,7 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2, Download, Trash2, RotateCw } from "lucide-react";
+
+interface ImageComment {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  number: number;
+}
 
 interface ImageItem {
   id: string;
@@ -13,6 +22,7 @@ interface ImageItem {
   loading: boolean;
   error: string | null;
   retryCount: number;
+  comments: ImageComment[];
 }
 
 interface ImageGridProps {
@@ -95,10 +105,13 @@ export function ImageGrid({
 
             {/* Image Preview */}
             <div className="relative aspect-[3/4] overflow-hidden bg-neutral-900">
-              <img
+              <Image
                 src={image.originalImageUrl}
                 alt={image.fileName}
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                fill
+                className="object-cover transition-transform group-hover:scale-105"
+                unoptimized
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
               {image.loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">

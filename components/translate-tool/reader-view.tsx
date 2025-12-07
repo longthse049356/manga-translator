@@ -1,35 +1,27 @@
 "use client";
 
-import { useState, memo } from "react";
+import { memo } from "react";
+import Image from "next/image";
 import {
   ReactCompareSlider,
   ReactCompareSliderImage,
 } from "react-compare-slider";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Eye, EyeOff, Split, ZoomIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RotateCw } from "lucide-react";
+import { ImageCommentOverlay } from "./image-comment-overlay";
+import { ViewModeControls } from "./view-mode-controls";
+import { useTranslateStore } from "./store";
 
-interface ImageItem {
-  id: string;
-  file: File | null;
-  originalImageUrl: string;
-  sourceUrl?: string;
-  fileName: string;
-  translatedImageUrl: string | null;
-  loading: boolean;
-  error: string | null;
-  retryCount: number;
-}
-
-interface ReaderViewProps {
-  images: ImageItem[];
-}
-
-type ViewMode = "translated" | "original" | "compare";
-
-export const ReaderView = memo(function ReaderView({ images }: ReaderViewProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("translated");
-  const [enableZoom, setEnableZoom] = useState(false);
+export const ReaderView = memo(function ReaderView() {
+  const images = useTranslateStore((state) => state.images);
+  const viewMode = useTranslateStore((state) => state.viewMode);
+  const isFeedbackMode = useTranslateStore((state) => state.isFeedbackMode);
+  const onAddComment = useTranslateStore((state) => state.addCommentToImage);
+  const onSaveComment = useTranslateStore((state) => state.updateComment);
+  const onDeleteComment = useTranslateStore((state) => state.deleteComment);
+  const onRegenerateWithFeedback = useTranslateStore(
+    (state) => state.regenerateWithFeedback
+  );
 
   // Filter only translated images
   const translatedImages = images.filter((img) => img.translatedImageUrl);
@@ -49,54 +41,7 @@ export const ReaderView = memo(function ReaderView({ images }: ReaderViewProps) 
   return (
     <div className="space-y-6">
       {/* View Mode Controls - Floating Glass Panel */}
-      <div className="sticky top-24 z-40 mx-auto flex max-w-fit items-center gap-4 rounded-2xl border border-white/20 bg-white/10 p-2 backdrop-blur-xl shadow-2xl shadow-purple-500/10">
-        <ToggleGroup
-          type="single"
-          value={viewMode}
-          onValueChange={(value) => value && setViewMode(value as ViewMode)}
-          className="gap-1"
-        >
-          <ToggleGroupItem
-            value="translated"
-            aria-label="Show translated only"
-            className="gap-2 rounded-xl px-4 py-2 text-white/70 transition-all data-[state=on]:bg-gradient-to-r data-[state=on]:from-purple-500 data-[state=on]:to-pink-500 data-[state=on]:text-white data-[state=on]:shadow-lg data-[state=on]:shadow-purple-500/50"
-          >
-            <Eye className="h-4 w-4" />
-            <span className="text-sm font-medium">Translated</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="original"
-            aria-label="Show original only"
-            className="gap-2 rounded-xl px-4 py-2 text-white/70 transition-all data-[state=on]:bg-gradient-to-r data-[state=on]:from-cyan-500 data-[state=on]:to-blue-500 data-[state=on]:text-white data-[state=on]:shadow-lg data-[state=on]:shadow-cyan-500/50"
-          >
-            <EyeOff className="h-4 w-4" />
-            <span className="text-sm font-medium">Original</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="compare"
-            aria-label="Compare side by side"
-            className="gap-2 rounded-xl px-4 py-2 text-white/70 transition-all data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-500 data-[state=on]:to-pink-500 data-[state=on]:text-white data-[state=on]:shadow-lg data-[state=on]:shadow-orange-500/50"
-          >
-            <Split className="h-4 w-4" />
-            <span className="text-sm font-medium">Compare</span>
-          </ToggleGroupItem>
-        </ToggleGroup>
-
-        {/* Zoom toggle for mobile */}
-        <div className="h-6 w-px bg-white/20" />
-        <button
-          onClick={() => setEnableZoom(!enableZoom)}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-            enableZoom
-              ? "bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/50"
-              : "text-white/70 hover:bg-white/10"
-          }`}
-          aria-label="Toggle zoom"
-        >
-          <ZoomIn className="h-4 w-4" />
-          Zoom {enableZoom ? "On" : "Off"}
-        </button>
-      </div>
+      <ViewModeControls />
 
       {/* Images Container - Gapless vertical scrolling */}
       <div className="mx-auto max-w-3xl space-y-0">
@@ -129,37 +74,47 @@ export const ReaderView = memo(function ReaderView({ images }: ReaderViewProps) 
                   className="w-full"
                 />
               </div>
-            ) : enableZoom ? (
-              <TransformWrapper
-                initialScale={1}
-                minScale={1}
-                maxScale={4}
-                doubleClick={{ mode: "toggle" }}
-              >
-                <TransformComponent wrapperClass="!w-full" contentClass="!w-full">
-                  <img
-                    src={
-                      viewMode === "translated"
-                        ? image.translatedImageUrl!
-                        : image.originalImageUrl
-                    }
-                    alt={`${viewMode === "translated" ? "Translated" : "Original"} ${image.fileName}`}
-                    className="w-full"
-                    loading="lazy"
-                  />
-                </TransformComponent>
-              </TransformWrapper>
+            ) : viewMode === "translated" ? (
+              <div className="relative">
+                <ImageCommentOverlay
+                  imageUrl={image.translatedImageUrl!}
+                  alt={`Translated ${image.fileName}`}
+                  comments={image.comments}
+                  isFeedbackMode={isFeedbackMode}
+                  onAddComment={(x, y) => onAddComment(image.id, x, y)}
+                  onSaveComment={(commentId, text) =>
+                    onSaveComment(image.id, commentId, text)
+                  }
+                  onDeleteComment={(commentId) =>
+                    onDeleteComment(image.id, commentId)
+                  }
+                />
+                {/* Regenerate Button */}
+                {image.comments.length > 0 && (
+                  <div className="absolute bottom-4 right-4 z-30 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <Button
+                      onClick={() => onRegenerateWithFeedback(image.id)}
+                      className="gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-6 font-semibold text-white shadow-2xl shadow-orange-500/30 transition-all hover:scale-105 hover:shadow-orange-500/40"
+                    >
+                      <RotateCw className="h-4 w-4" />
+                      Regenerate with {image.comments.length} Fix
+                      {image.comments.length > 1 ? "es" : ""}
+                    </Button>
+                  </div>
+                )}
+              </div>
             ) : (
-              <img
-                src={
-                  viewMode === "translated"
-                    ? image.translatedImageUrl!
-                    : image.originalImageUrl
-                }
-                alt={`${viewMode === "translated" ? "Translated" : "Original"} ${image.fileName}`}
-                className="w-full"
-                loading="lazy"
-              />
+              <div className="relative w-full">
+                <Image
+                  src={image.originalImageUrl}
+                  alt={`Original ${image.fileName}`}
+                  width={800}
+                  height={1200}
+                  className="w-full h-auto"
+                  unoptimized
+                  priority={index < 3}
+                />
+              </div>
             )}
           </div>
         ))}

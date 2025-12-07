@@ -4,26 +4,43 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Settings, Upload, BookOpen, Download } from "lucide-react";
+import { useTranslateStore } from "./store";
 
-interface ReaderHeaderProps {
-  mode: "upload" | "reader";
-  onModeChange: (mode: "upload" | "reader") => void;
-  onTranslateAll?: () => void;
-  onDownloadAll?: () => void;
-  isTranslating?: boolean;
-  hasUntranslatedImages?: boolean;
-  hasTranslatedImages?: boolean;
-}
+export const ReaderHeader = memo(function ReaderHeader() {
+  const mode = useTranslateStore((state) => state.mode);
+  const setMode = useTranslateStore((state) => state.setMode);
+  const images = useTranslateStore((state) => state.images);
+  const isTranslating = useTranslateStore((state) => state.isTranslating());
+  const hasUntranslatedImages = useTranslateStore((state) =>
+    state.hasUntranslatedImages()
+  );
+  const hasTranslatedImages = useTranslateStore((state) => state.hasTranslatedImages());
+  const translateImages = useTranslateStore((state) => state.translateImages);
 
-export const ReaderHeader = memo(function ReaderHeader({
-  mode,
-  onModeChange,
-  onTranslateAll,
-  onDownloadAll,
-  isTranslating = false,
-  hasUntranslatedImages = false,
-  hasTranslatedImages = false,
-}: ReaderHeaderProps) {
+  const handleTranslateAll = async () => {
+    const imageIds = images
+      .filter((img) => !img.translatedImageUrl && !img.loading)
+      .map((img) => img.id);
+    await translateImages(imageIds);
+  };
+
+  const handleDownloadAll = () => {
+    const translatedImages = images.filter((img) => img.translatedImageUrl);
+
+    if (translatedImages.length === 0) {
+      useTranslateStore.setState({ globalError: "No translated images to download." });
+      return;
+    }
+
+    translatedImages.forEach((imageItem, index) => {
+      setTimeout(() => {
+        const link = document.createElement("a");
+        link.href = imageItem.translatedImageUrl!;
+        link.download = `translated-${index + 1}-${imageItem.fileName}`;
+        link.click();
+      }, index * 100); // Stagger downloads to avoid browser blocking
+    });
+  };
   return (
     <header className="sticky top-4 z-50 mx-4 animate-in fade-in slide-in-from-top-5 duration-500">
       <div className="mx-auto max-w-7xl">
@@ -53,7 +70,7 @@ export const ReaderHeader = memo(function ReaderHeader({
             <ToggleGroup 
               type="single" 
               value={mode} 
-              onValueChange={(value) => value && onModeChange(value as "upload" | "reader")}
+              onValueChange={(value) => value && setMode(value as "upload" | "reader")}
               className="rounded-xl border border-white/20 bg-white/5 p-1 backdrop-blur-sm"
             >
               <ToggleGroupItem 
@@ -76,9 +93,9 @@ export const ReaderHeader = memo(function ReaderHeader({
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
-              {hasUntranslatedImages && onTranslateAll && (
+              {hasUntranslatedImages && (
                 <Button
-                  onClick={onTranslateAll}
+                  onClick={handleTranslateAll}
                   disabled={isTranslating}
                   className="gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 px-6 font-semibold text-white shadow-lg shadow-cyan-500/50 transition-all hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/60 disabled:opacity-50"
                 >
@@ -92,9 +109,9 @@ export const ReaderHeader = memo(function ReaderHeader({
                   )}
                 </Button>
               )}
-              {hasTranslatedImages && onDownloadAll && (
+              {hasTranslatedImages && (
                 <Button
-                  onClick={onDownloadAll}
+                  onClick={handleDownloadAll}
                   className="gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-6 font-semibold text-white shadow-lg shadow-green-500/50 transition-all hover:scale-105 hover:shadow-xl hover:shadow-green-500/60"
                 >
                   <Download className="h-4 w-4" />

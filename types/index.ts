@@ -15,3 +15,25 @@ export interface TranslateImageResponse {
   error?: string;
 }
 
+// Image types for translate tool
+export interface ImageComment {
+  id: string;
+  x: number; // % position from left
+  y: number; // % position from top
+  text: string;
+  number: number; // Display number (1, 2, 3...)
+}
+
+export interface ImageItem {
+  id: string;
+  file: File | null;
+  originalImageUrl: string;
+  sourceUrl?: string;
+  fileName: string;
+  translatedImageUrl: string | null;
+  loading: boolean;
+  error: string | null;
+  retryCount: number;
+  comments: ImageComment[];
+}
+

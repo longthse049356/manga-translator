@@ -41,11 +41,13 @@ export async function listAvailableModels() {
  * Translates manga image from English to Vietnamese using Gemini 3 Pro
  * @param imageFile - The image file to translate
  * @param seriesName - Optional series name for better context
+ * @param feedback - Optional user feedback for regeneration
  * @returns Base64 encoded translated image
  */
 export async function translateMangaImage(
   imageFile: File,
-  seriesName?: string
+  seriesName?: string,
+  feedback?: string
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -68,11 +70,11 @@ export async function translateMangaImage(
   const mimeType = imageFile.type || "image/png";
 
   // Define the dynamic context (This should change per chapter/scene)
-const contextDescription = seriesName 
-  ? `Series: ${seriesName}. Use appropriate character pronouns and tone based on the series context.`
-  : `DETECT the context automatically based on visual cues (character age, relationship, setting, tone)...`;
+  const contextDescription = seriesName 
+    ? `Series: ${seriesName}. Use appropriate character pronouns and tone based on the series context.`
+    : `DETECT the context automatically based on visual cues (character age, relationship, setting, tone)...`;
 
-const prompt = `
+  let prompt = `
 *** TASK: MANGA LOCALIZATION & IMAGE EDITING ***
 
 1. IMAGE QUALITY REQUIREMENTS (HIGHEST PRIORITY):
@@ -100,6 +102,23 @@ const prompt = `
 *** EXECUTION ***
 Replace the English text in the bubbles with the localized Vietnamese text based on the rules above. Return the final high-quality image.
 `;
+
+  // Append user feedback if provided (for regeneration)
+  if (feedback) {
+    prompt += `
+
+*** IMPORTANT: USER FEEDBACK & CORRECTIONS ***
+The user has reviewed the previous translation and provided specific feedback:
+
+${feedback}
+
+Please carefully address ALL of these issues in the new generation. Make sure to:
+1. Fix the specific problems mentioned in the feedback.
+2. Maintain the same high image quality and style.
+3. Keep all other correctly translated parts unchanged.
+4. Focus on improving only what was criticized.
+`;
+  }
 
   try {
     // Call Gemini 3 Pro Preview Image model with high quality settings
