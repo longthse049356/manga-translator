@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GradientBackground } from "@/components/translate-tool";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Mail, Lock, Github, Chrome, ArrowLeft } from "lucide-react";
+import { BookOpen, Mail, Lock, Code2, Globe, ArrowLeft } from "lucide-react";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function SignInPage() {
     }, 1000);
   };
 
-  const handleSocialLogin = (provider: string) => {
+  const handleSocialLogin = () => {
     setIsLoading(true);
     // Mock social auth
     setTimeout(() => {
@@ -70,21 +70,21 @@ export default function SignInPage() {
               {/* Social Login */}
               <div className="space-y-3">
                 <Button
-                  onClick={() => handleSocialLogin("google")}
+                  onClick={() => handleSocialLogin()}
                   disabled={isLoading}
                   className="w-full gap-2 rounded-xl border border-white/20 bg-white/5 py-6 font-semibold text-white hover:bg-white/10"
                   variant="ghost"
                 >
-                  <Chrome className="h-5 w-5" />
+                  <Globe className="h-5 w-5" />
                   Continue with Google
                 </Button>
                 <Button
-                  onClick={() => handleSocialLogin("github")}
+                  onClick={() => handleSocialLogin()}
                   disabled={isLoading}
                   className="w-full gap-2 rounded-xl border border-white/20 bg-white/5 py-6 font-semibold text-white hover:bg-white/10"
                   variant="ghost"
                 >
-                  <Github className="h-5 w-5" />
+                  <Code2 className="h-5 w-5" />
                   Continue with GitHub
                 </Button>
               </div>
@@ -163,7 +163,7 @@ export default function SignInPage() {
 
               {/* Sign Up Link */}
               <div className="text-center text-sm text-white/70">
-                Don't have an account?{" "}
+                Don&#39;t have an account?{" "}
                 <Link
                   href="/sign-up"
                   className="font-semibold text-cyan-400 hover:text-cyan-300"

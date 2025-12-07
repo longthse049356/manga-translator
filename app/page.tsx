@@ -13,7 +13,7 @@ import {
   Eye,
   CheckCircle2,
   ArrowRight,
-  Github,
+  Code2,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -360,7 +360,7 @@ export default function LandingPage() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 hover:text-white transition-colors"
                 >
-                  <Github className="h-4 w-4" />
+                  <Code2 className="h-4 w-4" />
                   GitHub
                 </a>
               </div>

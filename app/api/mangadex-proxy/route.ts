@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/**
- * Proxy API để fetch ảnh từ MangaDex (không cần giải mã XOR)
- * Image URL format: {baseUrl}/data/{hash}/{filename}
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -16,7 +12,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch ảnh với headers cần thiết để bypass CORS và 403
     const response = await fetch(imageUrl, {
       headers: {
         accept: "*/*",
@@ -33,7 +28,6 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       let errorMessage = `Failed to fetch image: ${response.statusText}`;
 
-      // Xử lý các lỗi cụ thể
       if (response.status === 410) {
         errorMessage = "Image URL has expired. Please refresh or use a new URL.";
       } else if (response.status === 403) {
@@ -52,15 +46,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Nhận dữ liệu dưới dạng ArrayBuffer (MangaDex không cần giải mã)
     const arrayBuffer = await response.arrayBuffer();
-
-    // Xác định Content-Type từ response hoặc từ URL
     const contentType =
       response.headers.get("content-type") ||
       (imageUrl.match(/\.(jpg|jpeg)$/i) ? "image/jpeg" : "image/png");
 
-    // Trả về ảnh trực tiếp (không cần giải mã)
     const uint8Array = new Uint8Array(arrayBuffer);
 
     return new NextResponse(uint8Array, {

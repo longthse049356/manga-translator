@@ -1,9 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-/**
- * List all available Gemini models
- * @returns Array of available model information
- */
 export async function listAvailableModels() {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -16,7 +12,6 @@ export async function listAvailableModels() {
   });
 
   try {
-    // List all available models
     const response = await ai.models.list();
     
     const models: Array<{ name: string; displayName?: string; description?: string }> = [];
@@ -37,13 +32,6 @@ export async function listAvailableModels() {
   }
 }
 
-/**
- * Translates manga image from English to Vietnamese using Gemini 3 Pro
- * @param imageFile - The image file to translate
- * @param seriesName - Optional series name for better context
- * @param feedback - Optional user feedback for regeneration
- * @returns Base64 encoded translated image
- */
 export async function translateMangaImage(
   imageFile: File,
   seriesName?: string,
@@ -63,13 +51,11 @@ export async function translateMangaImage(
     },
   });
 
-  // Convert image file to base64
   const arrayBuffer = await imageFile.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const base64Image = buffer.toString("base64");
   const mimeType = imageFile.type || "image/png";
 
-  // Define the dynamic context (This should change per chapter/scene)
   const contextDescription = seriesName 
     ? `Series: ${seriesName}. Use appropriate character pronouns and tone based on the series context.`
     : `DETECT the context automatically based on visual cues (character age, relationship, setting, tone)...`;
@@ -103,7 +89,6 @@ export async function translateMangaImage(
 Replace the English text in the bubbles with the localized Vietnamese text based on the rules above. Return the final high-quality image.
 `;
 
-  // Append user feedback if provided (for regeneration)
   if (feedback) {
     prompt += `
 
@@ -121,8 +106,6 @@ Please carefully address ALL of these issues in the new generation. Make sure to
   }
 
   try {
-    // Call Gemini 3 Pro Preview Image model with high quality settings
-    // Using type assertion for mediaResolution as it may not be in type definitions yet
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-image-preview",
       contents: [
@@ -136,8 +119,6 @@ Please carefully address ALL of these issues in the new generation. Make sure to
                 data: base64Image,
                 mimeType: mimeType,
               },
-              // Set high media resolution for better image quality
-              // Note: mediaResolution may require v1alpha API version
               mediaResolution: {
                 level: "MEDIA_RESOLUTION_HIGH",
               },
@@ -147,7 +128,6 @@ Please carefully address ALL of these issues in the new generation. Make sure to
       ],
     });
 
-    // Extract the translated image from response
     const candidate = response.candidates?.[0];
     if (!candidate || !candidate.content) {
       throw new Error("No response from Gemini API");
@@ -158,7 +138,6 @@ Please carefully address ALL of these issues in the new generation. Make sure to
       throw new Error("No content parts in Gemini API response");
     }
 
-    // Find the image part in the response
     for (const part of parts) {
       if (part.inlineData && part.inlineData.data) {
         return part.inlineData.data;
@@ -167,17 +146,14 @@ Please carefully address ALL of these issues in the new generation. Make sure to
 
     throw new Error("No image data in Gemini API response");
   } catch (error) {
-    // Parse Gemini API error response
     if (error instanceof Error) {
       let errorMessage = error.message;
       
-      // Try to parse JSON error response
       try {
         const errorJson = JSON.parse(error.message);
         if (errorJson.error) {
           const geminiError = errorJson.error;
           
-          // Handle specific error codes
           if (geminiError.code === 503 || geminiError.status === "UNAVAILABLE") {
             errorMessage = "Model đang quá tải. Vui lòng thử lại sau vài giây.";
           } else if (geminiError.code === 429) {
@@ -191,7 +167,6 @@ Please carefully address ALL of these issues in the new generation. Make sure to
           }
         }
       } catch {
-        // If not JSON, check if message contains common error patterns
         if (error.message.includes("503") || error.message.includes("overloaded")) {
           errorMessage = "Model đang quá tải. Vui lòng thử lại sau vài giây.";
         } else if (error.message.includes("429") || error.message.includes("rate limit")) {

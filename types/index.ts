@@ -1,27 +1,12 @@
 // Common types for the application
-// Add your shared types here
 
-export interface BaseResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-export interface TranslateImageResponse {
-  success: boolean;
-  image?: string; // Base64 encoded image
-  mimeType?: string;
-  error?: string;
-}
-
-// Image types for translate tool
+// Image types for translation tool
 export interface ImageComment {
   id: string;
-  x: number; // % position from left
-  y: number; // % position from top
+  x: number;
+  y: number;
   text: string;
-  number: number; // Display number (1, 2, 3...)
+  number: number;
 }
 
 export interface ImageItem {

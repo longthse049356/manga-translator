@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch image from external URL
     const response = await fetch(imageUrl, {
       headers: {
         accept: "*/*",
@@ -31,27 +30,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get content type from original response
     const contentType = response.headers.get("content-type") || "image/jpeg";
-    console.log("Original Content-Type:", contentType);
-
-    // Get image as arrayBuffer directly (more reliable)
     const arrayBuffer = await response.arrayBuffer();
-    console.log("ArrayBuffer size:", arrayBuffer.byteLength);
 
-    // Verify it's an image by content type
     if (!contentType.startsWith("image/")) {
-      console.error("Response is not an image. Content-Type:", contentType);
       return NextResponse.json(
         { error: `Invalid image format. Expected image/*, got ${contentType}` },
         { status: 400 }
       );
     }
 
-    // Convert to buffer
     const buffer = Buffer.from(arrayBuffer);
 
-    // Return image with proper content type and headers
     return new NextResponse(buffer, {
       status: 200,
       headers: {
@@ -62,8 +52,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Fetch image error:", error);
-    
     if (error instanceof Error) {
       return NextResponse.json(
         { error: error.message },

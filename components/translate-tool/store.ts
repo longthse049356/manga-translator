@@ -253,6 +253,7 @@ export const useTranslateStore = create<TranslateStore>((set, get) => ({
         (imageUrl: string, index: number) => {
           const id = generateImageId();
           const fileName = imageUrl.split("/").pop() || `mangadex-${index + 1}.jpg`;
+          // Use API proxy route to fetch images (binary response)
           const proxyUrl = `/api/mangadex-proxy?url=${encodeURIComponent(imageUrl)}`;
 
           return {

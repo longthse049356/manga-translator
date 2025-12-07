@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/**
- * Chuyển đổi chuỗi Hex thành Node.js Buffer (mảng byte)
- * @param hex - Chuỗi hex cần chuyển đổi
- * @returns Buffer chứa các byte từ hex string
- */
 function hex2Bin(hex: string): Buffer {
-  // Loại bỏ khoảng trắng và ký tự không hợp lệ
   const cleanHex = hex.replace(/\s+/g, "");
   
-  // Kiểm tra độ dài phải là số chẵn
   if (cleanHex.length % 2 !== 0) {
     throw new Error("Hex string must have even length");
   }
   
-  // Chuyển đổi từng cặp hex thành byte
   const bytes: number[] = [];
   for (let i = 0; i < cleanHex.length; i += 2) {
     const byte = parseInt(cleanHex.substring(i, i + 2), 16);
@@ -27,29 +19,17 @@ function hex2Bin(hex: string): Buffer {
   return Buffer.from(bytes);
 }
 
-// Khóa Hex thực tế từ MangaPlus
 const ENCRYPTION_HEX_KEY = "9fc7d58a868172d276677675ff6a8cb59457ae83d47523f779735c1acd7d76049f0eea3a6395308350d5853c81af23cd1e2d2fe356bb3bfded280fcbc76a05f9";
 
-/**
- * Giải mã ảnh bị scramble bằng thuật toán Repeating Key XOR
- * @param scrambledBuffer - Buffer đã bị scramble (ArrayBuffer hoặc Buffer)
- * @returns Buffer đã được giải mã
- */
 function unscrambleImage(scrambledBuffer: ArrayBuffer | Buffer): Buffer {
-  // Chuyển đổi ArrayBuffer thành Buffer Node.js
-  // Đảm bảo rằng đầu vào scrambledBuffer (ArrayBuffer) được chuyển đổi thành Buffer
   const buffer = Buffer.isBuffer(scrambledBuffer) 
     ? scrambledBuffer 
     : Buffer.from(new Uint8Array(scrambledBuffer));
   
-  // Chuyển ENCRYPTION_HEX_KEY thành mảng byte (keyArray) bằng hàm hex2Bin
   const keyArray = hex2Bin(ENCRYPTION_HEX_KEY);
   const keyLength = keyArray.length;
-  
-  // Tạo buffer mới cho kết quả giải mã
   const decryptedBuffer = Buffer.from(buffer);
   
-  // Sử dụng vòng lặp XOR với phép toán Modulo (%) để khóa lặp lại trên toàn bộ Buffer ảnh
   for (let i = 0; i < decryptedBuffer.length; i++) {
     const keyIndex = i % keyLength;
     decryptedBuffer[i] = decryptedBuffer[i] ^ keyArray[keyIndex];
@@ -70,7 +50,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch ảnh với headers cần thiết để bypass 403
     const response = await fetch(imageUrl, {
       headers: {
         accept: "*/*",
@@ -85,7 +64,6 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       let errorMessage = `Failed to fetch image: ${response.statusText}`;
       
-      // Xử lý các lỗi cụ thể
       if (response.status === 410) {
         errorMessage = "Image URL has expired. Please refresh or use a new URL.";
       } else if (response.status === 403) {
@@ -104,15 +82,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Nhận dữ liệu dưới dạng ArrayBuffer
     const arrayBuffer = await response.arrayBuffer();
-
-    // Giải mã ảnh bằng Repeating Key XOR
-    // unscrambleImage sẽ tự sử dụng ENCRYPTION_HEX_KEY bên trong
     const decryptedBuffer = unscrambleImage(arrayBuffer);
-
-    // Trả về ảnh đã giải mã
-    // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(decryptedBuffer);
     
     return new NextResponse(uint8Array, {

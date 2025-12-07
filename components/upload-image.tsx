@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { translateImageAction } from "@/app/actions/translate-action";
 
 export interface UploadedImage {
   id: string;
@@ -93,23 +94,17 @@ export function UploadImage({
         )
       );
 
-      // Call API
+      // Call Server Action
       if (onTranslate) {
         await onTranslate(updatedImage);
       } else {
-        const response = await fetch("/api/translate", {
-          method: "POST",
-          body: formData,
-        });
+        const response = await translateImageAction(formData);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to translate image");
+        if (!response.success) {
+          throw new Error(response.error || "Failed to translate image");
         }
 
-        const data = await response.json();
-
-        if (!data.success || !data.image) {
+        if (!response.image) {
           throw new Error("Invalid response from server");
         }
 
@@ -121,8 +116,8 @@ export function UploadImage({
         );
 
         // Convert base64 to blob URL
-        const base64Image = data.image;
-        const mimeType = data.mimeType || "image/png";
+        const base64Image = response.image;
+        const mimeType = response.mimeType || "image/png";
         const byteCharacters = atob(base64Image);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {

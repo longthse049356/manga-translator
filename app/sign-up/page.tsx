@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GradientBackground } from "@/components/translate-tool";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Mail, Lock, User, Github, Chrome, ArrowLeft } from "lucide-react";
+import { BookOpen, Mail, Lock, User, Code2, Globe, ArrowLeft } from "lucide-react";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function SignUpPage() {
     }, 1000);
   };
 
-  const handleSocialSignup = (provider: string) => {
+  const handleSocialSignup = () => {
     setIsLoading(true);
     // Mock social auth
     setTimeout(() => {
@@ -71,21 +71,21 @@ export default function SignUpPage() {
               {/* Social Signup */}
               <div className="space-y-3">
                 <Button
-                  onClick={() => handleSocialSignup("google")}
+                  onClick={() => handleSocialSignup()}
                   disabled={isLoading}
                   className="w-full gap-2 rounded-xl border border-white/20 bg-white/5 py-6 font-semibold text-white hover:bg-white/10"
                   variant="ghost"
                 >
-                  <Chrome className="h-5 w-5" />
+                  <Globe className="h-5 w-5" />
                   Continue with Google
                 </Button>
                 <Button
-                  onClick={() => handleSocialSignup("github")}
+                  onClick={() => handleSocialSignup()}
                   disabled={isLoading}
                   className="w-full gap-2 rounded-xl border border-white/20 bg-white/5 py-6 font-semibold text-white hover:bg-white/10"
                   variant="ghost"
                 >
-                  <Github className="h-5 w-5" />
+                  <Code2 className="h-5 w-5" />
                   Continue with GitHub
                 </Button>
               </div>
