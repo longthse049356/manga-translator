@@ -182,3 +182,185 @@ Please carefully address ALL of these issues in the new generation. Make sure to
   }
 }
 
+export async function translateMangaImagesBatch(
+  imageFiles: File[],
+  seriesName?: string,
+  feedback?: string
+): Promise<string[]> {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  // Initialize Gemini client with v1alpha API for mediaResolution support
+  const ai = new GoogleGenAI({
+    apiKey: apiKey,
+    httpOptions: {
+      apiVersion: "v1alpha",
+    },
+  });
+
+  // Convert all files to base64
+  const imageData = await Promise.all(
+    imageFiles.map(async (file) => {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64Image = buffer.toString("base64");
+      const mimeType = file.type || "image/png";
+      return { data: base64Image, mimeType };
+    })
+  );
+
+  const contextDescription = seriesName 
+    ? `Series: ${seriesName}. Use appropriate character pronouns and tone based on the series context.`
+    : `DETECT the context automatically based on visual cues (character age, relationship, setting, tone)...`;
+
+  let prompt = `
+*** TASK: MANGA LOCALIZATION & IMAGE EDITING (BATCH MODE) ***
+
+You are processing ${imageFiles.length} manga pages in sequence. Each page is part of the same chapter/story, so maintain consistency in:
+- Character names and pronouns
+- Translation style and tone
+- Context from previous pages
+
+1. IMAGE QUALITY REQUIREMENTS (HIGHEST PRIORITY):
+   - Analyze each uploaded high-resolution comic page.
+   - DETECT all speech bubbles containing English text.
+   - GENERATE a new image that is visually IDENTICAL to the original in terms of line art style, shading, contrast, and resolution.
+   - DO NOT apply any filters, compression, or style transfer. The artwork must remain crisp and sharp.
+   - ONLY modify the pixels inside the speech bubbles.
+
+2. TRANSLATION & LOCALIZATION RULES (VIETNAMESE):
+   - Role: Professional Vietnamese Manga Editor.
+   - Target Language: Vietnamese (Natural, Expressive).
+   - Tone/Vibe:
+     + PRIORITIZE SPOKEN LANGUAGE (Văn nói) over written language.
+     + Use appropriate pronouns based on the context: "${contextDescription}".
+     + For Gamer/Youth characters: Use slang, aggressive, and fun tone.
+     + For Serious/Legendary characters: Use Sino-Vietnamese (Hán Việt) words for power/authority.
+   - Sound Effects (SFX): If possible, translate SFX to Vietnamese equivalents (e.g., "Crunch" -> "Rộp/Ngoạm", "Bam" -> "Bùm").
+   - IMPORTANT: Maintain consistency across all ${imageFiles.length} pages. If a character name or term appears in multiple pages, use the same translation.
+
+3. TEXT FITTING & TYPOGRAPHY:
+   - Fit the Vietnamese translation perfectly inside the original speech bubbles.
+   - If the translation is too long, shorten it to fit natural speech patterns (Text Fitting).
+   - Use a font style that matches typical Manga aesthetics (Upper case for shouting, standard sans-serif for dialogue).
+
+*** EXECUTION ***
+Process all ${imageFiles.length} images in order. For each image:
+1. Replace the English text in the bubbles with the localized Vietnamese text based on the rules above.
+2. Return the final high-quality image.
+3. Maintain consistency with previous pages in this batch.
+
+Return all ${imageFiles.length} translated images in the same order as provided.
+`;
+
+  if (feedback) {
+    prompt += `
+
+*** IMPORTANT: USER FEEDBACK & CORRECTIONS ***
+The user has reviewed the previous translation and provided specific feedback:
+
+${feedback}
+
+Please carefully address ALL of these issues in the new generation. Make sure to:
+1. Fix the specific problems mentioned in the feedback.
+2. Maintain the same high image quality and style.
+3. Keep all other correctly translated parts unchanged.
+4. Focus on improving only what was criticized.
+`;
+  }
+
+  try {
+    // Build parts array with prompt and all images
+    const parts: any[] = [
+      {
+        text: prompt,
+      },
+    ];
+
+    // Add all images to parts
+    imageData.forEach((img) => {
+      parts.push({
+        inlineData: {
+          data: img.data,
+          mimeType: img.mimeType,
+        },
+        mediaResolution: {
+          level: "MEDIA_RESOLUTION_HIGH",
+        },
+      });
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-image-preview",
+      contents: [
+        {
+          parts,
+        },
+      ],
+    });
+
+    const candidate = response.candidates?.[0];
+    if (!candidate || !candidate.content) {
+      throw new Error("No response from Gemini API");
+    }
+
+    const responseParts = candidate.content.parts;
+    if (!responseParts || responseParts.length === 0) {
+      throw new Error("No content parts in Gemini API response");
+    }
+
+    // Extract all images from response
+    const translatedImages: string[] = [];
+    for (const part of responseParts) {
+      if (part.inlineData && part.inlineData.data) {
+        translatedImages.push(part.inlineData.data);
+      }
+    }
+
+    if (translatedImages.length !== imageFiles.length) {
+      throw new Error(
+        `Expected ${imageFiles.length} images, but received ${translatedImages.length}`
+      );
+    }
+
+    return translatedImages;
+  } catch (error) {
+    if (error instanceof Error) {
+      let errorMessage = error.message;
+      
+      try {
+        const errorJson = JSON.parse(error.message);
+        if (errorJson.error) {
+          const geminiError = errorJson.error;
+          
+          if (geminiError.code === 503 || geminiError.status === "UNAVAILABLE") {
+            errorMessage = "Model đang quá tải. Vui lòng thử lại sau vài giây.";
+          } else if (geminiError.code === 429) {
+            errorMessage = "Đã vượt quá giới hạn API. Vui lòng thử lại sau.";
+          } else if (geminiError.code === 400) {
+            errorMessage = geminiError.message || "Yêu cầu không hợp lệ.";
+          } else if (geminiError.code === 401 || geminiError.code === 403) {
+            errorMessage = "Lỗi xác thực API. Vui lòng kiểm tra API key.";
+          } else {
+            errorMessage = geminiError.message || "Lỗi từ Gemini API.";
+          }
+        }
+      } catch {
+        if (error.message.includes("503") || error.message.includes("overloaded")) {
+          errorMessage = "Model đang quá tải. Vui lòng thử lại sau vài giây.";
+        } else if (error.message.includes("429") || error.message.includes("rate limit")) {
+          errorMessage = "Đã vượt quá giới hạn API. Vui lòng thử lại sau.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+    throw new Error("Lỗi không xác định khi dịch ảnh batch");
+  }
+}
+

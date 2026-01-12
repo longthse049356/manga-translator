@@ -2,7 +2,22 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader2, Download, Trash2, RotateCw } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Download, Trash2, RotateCw, GripVertical, ArrowUpDown } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface ImageComment {
   id: string;
@@ -30,6 +45,141 @@ interface ImageGridProps {
   onRemoveImage: (id: string) => void;
   onRetry: (image: ImageItem) => void;
   onDownload: (image: ImageItem) => void;
+  onReorder?: (startIndex: number, endIndex: number) => void;
+  onSortByName?: () => void;
+}
+
+interface SortableImageItemProps {
+  image: ImageItem;
+  onRemoveImage: (id: string) => void;
+  onRetry: (image: ImageItem) => void;
+  onDownload: (image: ImageItem) => void;
+}
+
+function SortableImageItem({
+  image,
+  onRemoveImage,
+  onRetry,
+  onDownload,
+}: SortableImageItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      <div className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl transition-all hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/20">
+        {/* Drag Handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute left-2 top-2 z-10 cursor-grab active:cursor-grabbing rounded-lg bg-black/40 p-1.5 hover:bg-black/60 transition-colors"
+        >
+          <GripVertical className="h-4 w-4 text-white/70" />
+        </div>
+
+        {/* Status indicator at top */}
+        <div className="absolute right-2 top-2 z-10">
+          {image.loading ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20 backdrop-blur-sm">
+              <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
+            </div>
+          ) : image.translatedImageUrl ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20 backdrop-blur-sm">
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
+            </div>
+          ) : image.error ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 backdrop-blur-sm">
+              <XCircle className="h-4 w-4 text-red-400" />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Image Preview */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-neutral-900">
+          <Image
+            src={image.originalImageUrl}
+            alt={image.fileName}
+            fill
+            className="object-cover transition-transform group-hover:scale-105"
+            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+          {image.loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="flex flex-col items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                <p className="mt-2 text-sm text-white">Translating...</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card Content */}
+        <div className="p-3">
+          <p className="mb-2 truncate text-sm font-medium text-white">
+            {image.fileName}
+          </p>
+
+          {/* Error Message */}
+          {image.error && (
+            <div className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 backdrop-blur-sm">
+              <div className="flex items-start gap-2">
+                <XCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                <p className="text-xs text-red-200 leading-relaxed">
+                  {image.error}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            {image.translatedImageUrl && (
+              <Button
+                size="sm"
+                onClick={() => onDownload(image)}
+                className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
+              >
+                <Download className="h-3 w-3" />
+                Download
+              </Button>
+            )}
+            {image.error && (
+              <Button
+                size="sm"
+                onClick={() => onRetry(image)}
+                disabled={image.loading}
+                className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
+              >
+                <RotateCw className="h-3 w-3" />
+                Retry
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onRemoveImage(image.id)}
+              className="gap-1 rounded-lg text-red-300 hover:bg-red-500/20 hover:text-red-200"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ImageGrid({
@@ -37,7 +187,26 @@ export function ImageGrid({
   onRemoveImage,
   onRetry,
   onDownload,
+  onReorder,
+  onSortByName,
 }: ImageGridProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && onReorder) {
+      const oldIndex = images.findIndex((img) => img.id === active.id);
+      const newIndex = images.findIndex((img) => img.id === over.id);
+      onReorder(oldIndex, newIndex);
+    }
+  };
+
   if (images.length === 0) {
     return null;
   }
@@ -48,15 +217,25 @@ export function ImageGrid({
       <div className="rounded-2xl border border-white/20 bg-white/5 p-4 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-white">
-              Your Images
-            </h3>
+            <h3 className="text-lg font-semibold text-white">Your Images</h3>
             <p className="text-sm text-cyan-200/60">
               {images.filter((img) => img.translatedImageUrl).length} of{" "}
               {images.length} translated
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
+            {onSortByName && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onSortByName}
+                className="gap-2 border-white/20 bg-white/5 text-white hover:bg-white/10"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                Sort by filename
+              </Button>
+            )}
+            <div className="flex gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400">
                 {images.filter((img) => img.translatedImageUrl).length}
@@ -76,109 +255,30 @@ export function ImageGrid({
               <div className="text-xs text-white/50">Failed</div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
-      {/* Image Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {images.map((image) => (
-          <div
-            key={image.id}
-            className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl transition-all hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/20"
-          >
-            {/* Status indicator at top */}
-            <div className="absolute right-2 top-2 z-10">
-              {image.loading ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20 backdrop-blur-sm">
-                  <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />
-                </div>
-              ) : image.translatedImageUrl ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20 backdrop-blur-sm">
-                  <CheckCircle2 className="h-4 w-4 text-green-400" />
-                </div>
-              ) : image.error ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 backdrop-blur-sm">
-                  <XCircle className="h-4 w-4 text-red-400" />
-                </div>
-              ) : null}
-            </div>
-
-            {/* Image Preview */}
-            <div className="relative aspect-[3/4] overflow-hidden bg-neutral-900">
-              <Image
-                src={image.originalImageUrl}
-                alt={image.fileName}
-                fill
-                className="object-cover transition-transform group-hover:scale-105"
-                unoptimized
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+      {/* Image Cards Grid with Drag and Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={images.map((img) => img.id)}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {images.map((image) => (
+              <SortableImageItem
+                key={image.id}
+                image={image}
+                onRemoveImage={onRemoveImage}
+                onRetry={onRetry}
+                onDownload={onDownload}
               />
-              {image.loading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                  <div className="flex flex-col items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
-                    <p className="mt-2 text-sm text-white">
-                      Translating...
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Card Content */}
-            <div className="p-3">
-              <p className="mb-2 truncate text-sm font-medium text-white">
-                {image.fileName}
-              </p>
-
-              {/* Error Message */}
-              {image.error && (
-                <div className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 backdrop-blur-sm">
-                  <div className="flex items-start gap-2">
-                    <XCircle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-                    <p className="text-xs text-red-200 leading-relaxed">
-                      {image.error}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                {image.translatedImageUrl && (
-                  <Button
-                    size="sm"
-                    onClick={() => onDownload(image)}
-                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50"
-                  >
-                    <Download className="h-3 w-3" />
-                    Download
-                  </Button>
-                )}
-                {image.error && (
-                  <Button
-                    size="sm"
-                    onClick={() => onRetry(image)}
-                    disabled={image.loading}
-                    className="flex-1 gap-1 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
-                  >
-                    <RotateCw className="h-3 w-3" />
-                    Retry
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onRemoveImage(image.id)}
-                  className="gap-1 rounded-lg text-red-300 hover:bg-red-500/20 hover:text-red-200"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

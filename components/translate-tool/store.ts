@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { ImageItem } from "@/types";
+import { arrayMove } from "@dnd-kit/sortable";
 import {
   validateFile,
   generateImageId,
   generateCommentId,
   translateSingleImage,
+  translateImagesBatch,
   fetchMangadexChapter,
 } from "@/services/translate";
 
@@ -26,6 +28,8 @@ interface TranslateStore {
   addImages: (images: ImageItem[]) => void;
   updateImage: (id: string, updates: Partial<ImageItem>) => void;
   removeImage: (id: string) => void;
+  reorderImages: (oldIndex: number, newIndex: number) => void;
+  sortImagesByName: () => void;
 
   // UI state actions
   setMode: (mode: "upload" | "reader") => void;
@@ -89,6 +93,21 @@ export const useTranslateStore = create<TranslateStore>((set, get) => ({
       return { images: state.images.filter((img) => img.id !== id) };
     }),
 
+  reorderImages: (oldIndex, newIndex) =>
+    set((state) => ({
+      images: arrayMove(state.images, oldIndex, newIndex),
+    })),
+
+  sortImagesByName: () =>
+    set((state) => ({
+      images: [...state.images].sort((a, b) =>
+        a.fileName.localeCompare(b.fileName, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        })
+      ),
+    })),
+
   // UI state actions
   setMode: (mode) => set({ mode }),
   setViewMode: (viewMode) => set({ viewMode }),
@@ -139,11 +158,18 @@ export const useTranslateStore = create<TranslateStore>((set, get) => ({
 
   translateImages: async (imageIds) => {
     const { images, seriesName } = get();
-    const MAX_CONCURRENT = 10;
+    const BATCH_SIZE = 5;
+    const MAX_CONCURRENT_BATCHES = 2;
 
-    const imagesToTranslate = images.filter(
-      (img) => imageIds.includes(img.id) && !img.translatedImageUrl && !img.loading
-    );
+    // Filter and sort images to translate (maintain current order)
+    const imagesToTranslate = images
+      .filter((img) => imageIds.includes(img.id) && !img.translatedImageUrl && !img.loading)
+      .sort((a, b) => {
+        // Maintain the order they appear in the images array
+        const indexA = images.findIndex((img) => img.id === a.id);
+        const indexB = images.findIndex((img) => img.id === b.id);
+        return indexA - indexB;
+      });
 
     if (imagesToTranslate.length === 0) {
       set({ globalError: "No images to translate." });
@@ -152,83 +178,96 @@ export const useTranslateStore = create<TranslateStore>((set, get) => ({
 
     set({ globalError: null });
 
-    const queue: ImageItem[] = [...imagesToTranslate];
+    // Group images into batches of BATCH_SIZE
+    const batches: ImageItem[][] = [];
+    for (let i = 0; i < imagesToTranslate.length; i += BATCH_SIZE) {
+      batches.push(imagesToTranslate.slice(i, i + BATCH_SIZE));
+    }
+
+    // Set all images to loading
+    set((state) => ({
+      images: state.images.map((img) =>
+        imageIds.includes(img.id) && !img.translatedImageUrl && !img.loading
+          ? ({ ...img, loading: true, error: null } as ImageItem)
+          : img
+      ),
+    }));
+
     let successCount = 0;
     let failedCount = 0;
-    const activePromises: Map<string, Promise<{ success: boolean; id: string }>> = new Map();
+    const activeBatchPromises: Map<number, Promise<void>> = new Map();
+    let batchIndex = 0;
 
-    // Process queue with concurrency limit
-    while (queue.length > 0 || activePromises.size > 0) {
-      while (activePromises.size < MAX_CONCURRENT && queue.length > 0) {
-        const imageItem = queue.shift();
-        if (!imageItem) break;
+    // Process batches with concurrency limit
+    while (batchIndex < batches.length || activeBatchPromises.size > 0) {
+      // Start new batches up to MAX_CONCURRENT_BATCHES
+      while (activeBatchPromises.size < MAX_CONCURRENT_BATCHES && batchIndex < batches.length) {
+        const currentBatch = batches[batchIndex];
+        const currentBatchIndex = batchIndex;
+        batchIndex++;
 
-        // Update loading state
-        set((state) => ({
-          images: state.images.map((img) =>
-            img.id === imageItem.id
-              ? ({ ...img, loading: true, error: null } as ImageItem)
-              : img
-          ),
-        }));
-
-        const promise = translateSingleImage(imageItem, seriesName)
-          .then((result) => {
-            if (result.success) {
-              successCount++;
-              set((state) => ({
-                images: state.images.map((img) =>
-                  img.id === result.id
-                    ? ({
-                        ...img,
-                        loading: false,
-                        translatedImageUrl: result.translatedImageUrl,
-                        retryCount: 0,
-                      } as ImageItem)
-                    : img
-                ),
-              }));
-            } else {
+        const batchPromise = translateImagesBatch(currentBatch, seriesName)
+          .then((batchResult) => {
+            // Update state for each result in the batch
+            batchResult.results.forEach((result) => {
+              if (result.success) {
+                successCount++;
+                set((state) => ({
+                  images: state.images.map((img) =>
+                    img.id === result.id
+                      ? ({
+                          ...img,
+                          loading: false,
+                          translatedImageUrl: result.translatedImageUrl,
+                          retryCount: 0,
+                        } as ImageItem)
+                      : img
+                  ),
+                }));
+              } else {
+                failedCount++;
+                set((state) => ({
+                  images: state.images.map((img) =>
+                    img.id === result.id
+                      ? ({
+                          ...img,
+                          loading: false,
+                          error: result.error || "Translation failed",
+                        } as ImageItem)
+                      : img
+                  ),
+                }));
+              }
+            });
+          })
+          .catch((error) => {
+            // Mark all images in this batch as failed
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            currentBatch.forEach((imageItem) => {
               failedCount++;
               set((state) => ({
                 images: state.images.map((img) =>
-                  img.id === result.id
-                    ? ({
-                        ...img,
-                        loading: false,
-                        error: result.error || "Translation failed",
-                      } as ImageItem)
+                  img.id === imageItem.id
+                    ? ({ ...img, loading: false, error: errorMessage } as ImageItem)
                     : img
                 ),
               }));
-            }
-            return result;
-          })
-          .catch((error) => {
-            failedCount++;
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            set((state) => ({
-              images: state.images.map((img) =>
-                img.id === imageItem.id
-                  ? ({ ...img, loading: false, error: errorMessage } as ImageItem)
-                  : img
-              ),
-            }));
-            return { success: false, id: imageItem.id };
+            });
           })
           .finally(() => {
-            activePromises.delete(imageItem.id);
+            activeBatchPromises.delete(currentBatchIndex);
           });
 
-        activePromises.set(imageItem.id, promise);
+        activeBatchPromises.set(currentBatchIndex, batchPromise);
       }
 
+      // Wait for at least one batch to complete before starting more
       if (
-        activePromises.size >= MAX_CONCURRENT ||
-        (queue.length === 0 && activePromises.size > 0)
+        activeBatchPromises.size >= MAX_CONCURRENT_BATCHES ||
+        (batchIndex >= batches.length && activeBatchPromises.size > 0)
       ) {
-        await Promise.race(Array.from(activePromises.values()));
-      } else if (queue.length === 0 && activePromises.size === 0) {
+        await Promise.race(Array.from(activeBatchPromises.values()));
+      } else if (batchIndex >= batches.length && activeBatchPromises.size === 0) {
         break;
       }
     }

@@ -5,32 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GradientBackground } from "@/components/translate-tool";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { BookOpen, Mail, Lock, User, Code2, Globe, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Mock registration - redirect to translate tool after 1 second
-    setTimeout(() => {
-      router.push("/translate-tool");
-    }, 1000);
+    toast.info("Registration feature will be available in a future update");
   };
 
   const handleSocialSignup = () => {
-    setIsLoading(true);
-    // Mock social auth
-    setTimeout(() => {
-      router.push("/translate-tool");
-    }, 1000);
+    toast.info("This feature will be available in a future update");
   };
 
   return (

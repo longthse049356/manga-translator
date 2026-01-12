@@ -6,30 +6,40 @@ import { Input } from "@/components/ui/input";
 import { GradientBackground } from "@/components/translate-tool";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Mail, Lock, Code2, Globe, ArrowLeft } from "lucide-react";
+import { BookOpen, Mail, Lock, Code2, Globe, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { loginAction } from "@/app/actions/auth-action";
+import { toast } from "sonner";
 
 export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Mock authentication - redirect to translate tool after 1 second
-    setTimeout(() => {
-      router.push("/translate-tool");
-    }, 1000);
+    try {
+      const result = await loginAction(email, password);
+      
+      if (result.success) {
+        toast.success("Signed in successfully");
+        router.push("/translate-tool");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Invalid credentials");
+        setIsLoading(false);
+      }
+    } catch (error) {
+      toast.error("An error occurred. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = () => {
-    setIsLoading(true);
-    // Mock social auth
-    setTimeout(() => {
-      router.push("/translate-tool");
-    }, 1000);
+    toast.info("This feature will be available in a future update");
   };
 
   return (
@@ -127,6 +137,7 @@ export default function SignInPage() {
                     </label>
                     <button
                       type="button"
+                      tabIndex={-1}
                       className="text-xs text-cyan-400 hover:text-cyan-300"
                     >
                       Forgot password?
@@ -135,13 +146,27 @@ export default function SignInPage() {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
                     <Input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-12 rounded-xl border-white/20 bg-white/5 pl-10 text-white placeholder:text-white/40 focus-visible:ring-cyan-500/50"
+                      className="h-12 rounded-xl border-white/20 bg-white/5 pl-10 pr-10 text-white placeholder:text-white/40 focus-visible:ring-cyan-500/50"
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-auto w-auto p-0 text-white/40 hover:text-white/60 transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </Button>
                   </div>
                 </div>
 

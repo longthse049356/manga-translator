@@ -1,12 +1,14 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Settings, Upload, BookOpen, Download } from "lucide-react";
 import { useTranslateStore } from "./store";
+import { SettingsDialog } from "./settings-dialog";
 
 export const ReaderHeader = memo(function ReaderHeader() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const mode = useTranslateStore((state) => state.mode);
   const setMode = useTranslateStore((state) => state.setMode);
   const images = useTranslateStore((state) => state.images);
@@ -121,6 +123,7 @@ export const ReaderHeader = memo(function ReaderHeader() {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setSettingsOpen(true)}
                 className="rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <Settings className="h-5 w-5" />
@@ -129,6 +132,7 @@ export const ReaderHeader = memo(function ReaderHeader() {
           </div>
         </div>
       </div>
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </header>
   );
 });

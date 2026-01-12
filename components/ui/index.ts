@@ -38,4 +38,5 @@ export {
   ToggleGroup,
   ToggleGroupItem,
 } from "./toggle-group";
+export { Toaster } from "./toaster";
 

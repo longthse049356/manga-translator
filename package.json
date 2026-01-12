@@ -13,6 +13,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.0.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slider": "^1.3.6",
@@ -21,12 +24,14 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jose": "^6.1.3",
     "lucide-react": "^0.555.0",
     "next": "16.0.7",
     "react": "19.2.0",
     "react-compare-slider": "^3.1.0",
     "react-dom": "19.2.0",
     "react-zoom-pan-pinch": "^3.7.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.9"
   },

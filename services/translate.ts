@@ -1,5 +1,5 @@
 import { ImageItem } from "@/types";
-import { translateImageAction } from "@/app/actions/translate-action";
+import { translateImageAction, translateImagesBatchAction } from "@/app/actions/translate-action";
 import { fetchMangadexChapterAction } from "@/app/actions/mangadex-action";
 import { ApiClient } from "@/lib/api-client";
 
@@ -30,6 +30,12 @@ export interface TranslateSingleImageResult {
   success: boolean;
   translatedImageUrl?: string;
   error?: string;
+}
+
+export interface TranslateBatchResult {
+  results: Array<{ id: string; success: boolean; translatedImageUrl?: string; error?: string }>;
+  successCount: number;
+  failedCount: number;
 }
 
 export const translateSingleImage = async (
@@ -118,6 +124,130 @@ export const fetchMangadexChapter = async (
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
     return { imageUrls: [], error: errorMessage };
+  }
+};
+
+export const translateImagesBatch = async (
+  imageItems: ImageItem[],
+  seriesName: string,
+  feedback?: string
+): Promise<TranslateBatchResult> => {
+  try {
+    const formData = new FormData();
+
+    // Prepare files - need to fetch from sourceUrl if needed
+    const filePromises = imageItems.map(async (item, index) => {
+      if (item.file) {
+        return { file: item.file, index };
+      } else if (item.sourceUrl) {
+        const proxyUrl = `/api/mangadex-proxy?url=${encodeURIComponent(item.sourceUrl)}`;
+        const imageBlob = await ApiClient.getBlob(proxyUrl);
+        const file = new File([imageBlob.blob], item.fileName, { type: imageBlob.contentType });
+        return { file, index };
+      } else {
+        throw new Error(`No file or source URL available for image ${item.id}`);
+      }
+    });
+
+    const fileResults = await Promise.all(filePromises);
+
+    // Add files to FormData
+    fileResults.forEach(({ file, index }) => {
+      formData.append(`image${index}`, file);
+    });
+
+    if (seriesName.trim()) {
+      formData.append("seriesName", seriesName.trim());
+    }
+
+    if (feedback) {
+      formData.append("feedback", feedback);
+    }
+
+    const response = await translateImagesBatchAction(formData);
+
+    if (!response.success) {
+      // If batch failed entirely, mark all as failed
+      return {
+        results: imageItems.map((item) => ({
+          id: item.id,
+          success: false,
+          error: response.error || "Batch translation failed",
+        })),
+        successCount: 0,
+        failedCount: imageItems.length,
+      };
+    }
+
+    // Map results back to image items
+    const results: Array<{ id: string; success: boolean; translatedImageUrl?: string; error?: string }> = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    // Create error map for quick lookup
+    const errorMap = new Map<number, string>();
+    if (response.errors) {
+      response.errors.forEach((err) => {
+        errorMap.set(err.index, err.error);
+      });
+    }
+
+    // Track valid image index (skipping errors)
+    let validImageIndex = 0;
+
+    imageItems.forEach((item, index) => {
+      const error = errorMap.get(index);
+      if (error) {
+        // This image had a validation error
+        results.push({
+          id: item.id,
+          success: false,
+          error,
+        });
+        failedCount++;
+      } else {
+        // This image was valid, get its result
+        const imageResult = response.images?.[validImageIndex];
+        if (imageResult && imageResult.image) {
+          const mimeType = imageResult.mimeType || "image/png";
+          const translatedDataUrl = `data:${mimeType};base64,${imageResult.image}`;
+          results.push({
+            id: item.id,
+            success: true,
+            translatedImageUrl: translatedDataUrl,
+          });
+          successCount++;
+          validImageIndex++;
+        } else {
+          results.push({
+            id: item.id,
+            success: false,
+            error: "No translated image received from server",
+          });
+          failedCount++;
+          validImageIndex++;
+        }
+      }
+    });
+
+    return {
+      results,
+      successCount,
+      failedCount,
+    };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+    
+    // Mark all as failed
+    return {
+      results: imageItems.map((item) => ({
+        id: item.id,
+        success: false,
+        error: errorMessage,
+      })),
+      successCount: 0,
+      failedCount: imageItems.length,
+    };
   }
 };
 

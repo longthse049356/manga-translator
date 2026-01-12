@@ -24,6 +24,8 @@ export default function TranslateToolPage() {
   const fetchMangadexImages = useTranslateStore((state) => state.fetchMangadexImages);
   const removeImage = useTranslateStore((state) => state.removeImage);
   const translateImages = useTranslateStore((state) => state.translateImages);
+  const reorderImages = useTranslateStore((state) => state.reorderImages);
+  const sortImagesByName = useTranslateStore((state) => state.sortImagesByName);
 
   const handleFilesSelect = (files: FileList | File[]) => {
     addFilesToImages(files);
@@ -52,6 +54,10 @@ export default function TranslateToolPage() {
     link.href = image.translatedImageUrl;
     link.download = `translated-${image.fileName}`;
     link.click();
+  };
+
+  const handleReorder = (oldIndex: number, newIndex: number) => {
+    reorderImages(oldIndex, newIndex);
   };
 
   return (
@@ -99,6 +105,8 @@ export default function TranslateToolPage() {
                     onRemoveImage={handleRemoveImage}
                     onRetry={handleRetry}
                     onDownload={handleDownload}
+                    onReorder={handleReorder}
+                    onSortByName={sortImagesByName}
                   />
                 </div>
               )}
