@@ -67,6 +67,15 @@ export default function LandingPage() {
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
+                <Link href="/editor">
+                  <Button
+                    className="gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 px-8 py-6 text-lg font-semibold text-white shadow-2xl shadow-pink-500/50 transition-all hover:scale-105 hover:shadow-pink-500/60"
+                  >
+                    <Code2 className="h-5 w-5" />
+                    Editor Studio (Beta)
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <Button
                   variant="ghost"
                   className="gap-2 rounded-xl border border-white/20 bg-white/5 px-8 py-6 text-lg font-semibold text-white backdrop-blur-sm hover:bg-white/10"

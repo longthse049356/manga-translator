@@ -85,3 +85,16 @@ Never push directly to `main`. Always:
 ### Accessibility (MANDATORY)
 - Text on glass MUST have >4.5:1 contrast ratio.
 - Verify using `FE/components/translate-tool/ACCESSIBILITY.md` standards.
+
+### Editor Development Rules
+- **State Management**: MUST use Zustand with Slices (`FE/stores/editor/`). No local `useState` for global data (layers, tools, zoom).
+- **Selectors**: Always use selective subscription, e.g. `useEditorStore(selectZoom)`. Avoid subscribing entire store.
+- **Slice Boundaries**:
+  - `ui-slice`: transient UI (zoom, tool, view mode, opacity) — no persist.
+  - `document-slice`: persisted data (layers, text boxes, images) — saved via `persist`.
+  - `selection-slice`: current selections.
+  - `canvas-slice`: canvas state (uploaded image, pan).
+  - `history-slice`: undo/redo.
+- **Process for new features**: 1) Define types in `types.ts`; 2) Add actions to the correct slice; 3) Wire UI components in `FE/components/editor/`; 4) Call `recordHistory()` for document mutations.
+- **UI Theme (Editor)**: `bg-neutral-950` (main), `bg-neutral-900` (panels), borders `border-white/10`, text `text-white`, accent `text-cyan-500`, hover `hover:bg-white/10`.
+- **Performance**: If a slider or control lags, split into smaller components and subscribe only to needed state (use `useShallow` when selecting multiple fields).
